@@ -19,7 +19,7 @@ type InputReader interface {
 }
 
 const (
-	inputFileName = "data/blobs.csv"
+	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/two_circles.csv"
 
 	epochs        = 1e+5
 	learningRateW = 1e-3
@@ -43,7 +43,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	inputs, w := linearInput(inputs)
+	// inputs, w := linearInput(inputs)
+	inputs, w := quadraticInput(inputs)
 
 	var maxX, maxY float64
 	for i := range inputs {
@@ -89,8 +90,11 @@ func main() {
 	boundPlot := decBoundPlot{
 		rows: int(maxY + 1.5),
 		cols: int(maxX + 1.5),
-		f:    func(c, r int) float64 { return p([]float64{float64(c), float64(r)}, w, b) },
+		f: func(c, r int) float64 {
+			return p([]float64{float64(c), float64(r), float64(c) * float64(c), float64(r) * float64(r)}, w, b)
+		},
 	}
+
 	plotters := []plot.Plotter{
 		plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255)),
 	}
@@ -106,6 +110,17 @@ func main() {
 
 func linearInput(linearInput [][]float64) ([][]float64, []float64) {
 	return linearInput, make([]float64, 2)
+}
+
+func quadraticInput(linearInput [][]float64) (quadraticInput [][]float64, w []float64) {
+	quadraticInput = make([][]float64, len(linearInput))
+	for i, x := range linearInput {
+		if len(x) != 2 {
+			panic("Inner slices must have length 2 in linear input")
+		}
+		quadraticInput[i] = []float64{x[0], x[1], x[0] * x[0], x[1] * x[1]}
+	}
+	return quadraticInput, make([]float64, 4)
 }
 
 func split(inputs [][]float64, y []float64) (xTrain, xTest [][]float64, yTrain, yTest []float64) {
@@ -146,6 +161,9 @@ func sigmoid(z float64) float64 {
 }
 
 func dot(a []float64, b []float64) (res float64) {
+	if len(a) != len(b) {
+		panic("Length of a and b must be equal")
+	}
 	for i := 0; i < len(a); i++ {
 		res += a[i] * b[i]
 	}
