@@ -19,7 +19,7 @@ type InputReader interface {
 }
 
 const (
-	inputFileName = "data/exams.csv"
+	inputFileName = "data/blobs.csv"
 
 	epochs        = 1e+5
 	learningRateW = 1e-3
@@ -42,6 +42,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	inputs, w := linearInput(inputs)
+
 	var maxX, maxY float64
 	for i := range inputs {
 		if inputs[i][0] > maxX {
@@ -64,7 +67,7 @@ func main() {
 		pointPlt.addTrain(xTrain[i][0], xTrain[i][1], yTrain[i])
 	}
 
-	w := make([]float64, 2)
+	// w := make([]float64, 2)
 	var b float64
 	for i := 0; i < epochs; i++ {
 		p := inference(xTrain, w, b)
@@ -99,6 +102,10 @@ func main() {
 	if err := ebiten.RunGame(&App{img: ebiten.NewImageFromImage(Plot(screenWidth, screenHeight, legend, plotters...))}); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func linearInput(linearInput [][]float64) ([][]float64, []float64) {
+	return linearInput, make([]float64, 2)
 }
 
 func split(inputs [][]float64, y []float64) (xTrain, xTest [][]float64, yTrain, yTest []float64) {
