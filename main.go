@@ -185,17 +185,20 @@ func main() {
 	}
 
 	go func() {
-		learningRateW := []float64{1e-3, 1e-6, 1e-10}
-		learningRateB := []float64{5e-1, 5e-1, 5e-1}
+		learningRate := 1e-3
 		w := make([]float64, len(polynomial(0, 0)))
-		var b float64
+		var b, squaredGradB float64
+		squaredGradW := make([]float64, len(w))
+		epsilon := 1e-8
 		for i := 0; i <= epochs; i++ {
 			y := inference(xTrain, w, b)
 			dw, db := dCost(xTrain, yTrain, y)
 			for i := range dw {
-				w[i] -= dw[i] * learningRateW[funcType-1]
+				squaredGradW[i] += dw[i] * dw[i]
+				w[i] -= (learningRate / math.Sqrt(squaredGradW[i]+epsilon)) * dw[i]
 			}
-			b -= db * learningRateB[funcType-1]
+			squaredGradB += db * db
+			b -= (learningRate / math.Sqrt(squaredGradB+epsilon)) * db
 			if i%printEveryNthEpochs == 0 {
 				boundPlot := decBoundPlot{
 					rows: int(inputPointsMaxY),
