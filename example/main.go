@@ -19,15 +19,19 @@ type InputReader interface {
 }
 
 const (
-	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/two_circles.csv"
+	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/arcs.csv"
+	// inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/blobs.csv"
+	// inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/circle.csv"
+	// inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/exams.csv"
+	// inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/two_circles.csv"
 
-	epochs        = 1e+5
+	epochs        = 1e+6
 	learningRateW = 1e-3
 	learningRateB = 1e-1
 )
 
 var (
-	rnd = rand.New(rand.NewSource(10))
+	rnd = rand.New(rand.NewSource(25))
 )
 
 func main() {
@@ -44,7 +48,8 @@ func main() {
 	}
 
 	// inputs, w := linearInput(inputs)
-	inputs, w := quadraticInput(inputs)
+	// inputs, w := quadraticInput(inputs)
+	inputs, w := cubicInput(inputs)
 
 	var maxX, maxY float64
 	for i := range inputs {
@@ -91,7 +96,9 @@ func main() {
 		rows: int(maxY + 1.5),
 		cols: int(maxX + 1.5),
 		f: func(c, r int) float64 {
-			return p([]float64{float64(c), float64(r), float64(c) * float64(c), float64(r) * float64(r)}, w, b)
+			// return p(linearDecisionBoundaryInput(c, r), w, b)
+			// return p(quadraticDecisionBoundaryInput(c, r), w, b)
+			return p(cubicDecisionBoundaryInput(c, r), w, b)
 		},
 	}
 
@@ -112,6 +119,10 @@ func linearInput(linearInput [][]float64) ([][]float64, []float64) {
 	return linearInput, make([]float64, 2)
 }
 
+func linearDecisionBoundaryInput(c, r int) []float64 {
+	return []float64{float64(c), float64(r)}
+}
+
 func quadraticInput(linearInput [][]float64) (quadraticInput [][]float64, w []float64) {
 	quadraticInput = make([][]float64, len(linearInput))
 	for i, x := range linearInput {
@@ -121,6 +132,27 @@ func quadraticInput(linearInput [][]float64) (quadraticInput [][]float64, w []fl
 		quadraticInput[i] = []float64{x[0], x[1], x[0] * x[0], x[1] * x[1]}
 	}
 	return quadraticInput, make([]float64, 4)
+}
+
+func quadraticDecisionBoundaryInput(c, r int) []float64 {
+	a, b := float64(c), float64(r)
+	return []float64{a, b, a * a, b * b}
+}
+
+func cubicInput(linearInput [][]float64) (cubicInput [][]float64, w []float64) {
+	cubicInput = make([][]float64, len(linearInput))
+	for i, x := range linearInput {
+		if len(x) != 2 {
+			panic("Inner slices must have length 2 in linear input")
+		}
+		cubicInput[i] = []float64{x[0], x[1], x[0] * x[0], x[1] * x[1], x[0] * x[0] * x[0], x[1] * x[1] * x[1]}
+	}
+	return cubicInput, make([]float64, 6)
+}
+
+func cubicDecisionBoundaryInput(c, r int) []float64 {
+	a, b := float64(c), float64(r)
+	return []float64{a, b, a * a, b * b, a * a * a, b * b * b}
 }
 
 func split(inputs [][]float64, y []float64) (xTrain, xTest [][]float64, yTrain, yTest []float64) {
