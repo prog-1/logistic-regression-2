@@ -19,15 +19,11 @@ type InputReader interface {
 }
 
 const (
-	inputFileName = "data/exams.csv"
+	inputFileName = "data/blobs.csv"
 
 	epochs        = 1e+5
 	learningRateW = 1e-3
 	learningRateB = 1e-1
-)
-
-var (
-	rnd = rand.New(rand.NewSource(10))
 )
 
 func main() {
@@ -52,6 +48,8 @@ func main() {
 		}
 	}
 
+	inputs, y = shuffle(inputs, y)
+	qInputs := quadratic(inputs)
 	pointPlt := dataPlot{
 		posShape:   draw.PlusGlyph{},
 		negShape:   draw.RingGlyph{},
@@ -59,12 +57,11 @@ func main() {
 		trueClr:    color.RGBA{G: 255, A: 255},
 		falseClr:   color.RGBA{R: 255, A: 255},
 	}
-	xTrain, xTest, yTrain, yTest := split(inputs, y)
+	xTrain, xTest, yTrain, yTest := split(qInputs, y)
 	for i := range yTrain {
 		pointPlt.addTrain(xTrain[i][0], xTrain[i][1], yTrain[i])
 	}
-
-	w := make([]float64, 2)
+	w := make([]float64, 5)
 	var b float64
 	for i := 0; i < epochs; i++ {
 		p := inference(xTrain, w, b)
@@ -85,7 +82,9 @@ func main() {
 	boundPlot := decBoundPlot{
 		rows: int(maxY + 1.5),
 		cols: int(maxX + 1.5),
-		f:    func(c, r int) float64 { return p([]float64{float64(c), float64(r)}, w, b) },
+		f: func(c, r int) float64 {
+			return p([]float64{float64(c), float64(r), float64(c * c), float64(r * r), float64(c * r)}, w, b)
+		},
 	}
 	plotters := []plot.Plotter{
 		plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255)),
@@ -99,31 +98,26 @@ func main() {
 	}
 }
 
-func split(inputs [][]float64, y []float64) (xTrain, xTest [][]float64, yTrain, yTest []float64) {
-	trainIndices := make(map[int]bool)
-	for i := 0; i < len(inputs)/5*4; i++ {
-		idx := rnd.Intn(len(inputs))
-		for trainIndices[idx] {
-			idx = rnd.Intn(len(inputs))
-		}
-		trainIndices[idx] = true
+func quadratic(inputs [][]float64) (qInputs [][]float64) {
+	for _, x := range inputs {
+		x0 := x[0]
+		x1 := x[1]
+		qInputs = append(qInputs, []float64{x0, x1, x0 * x0, x1 * x1, x0 * x1})
 	}
-	for i := 0; i < len(inputs); i++ {
-		if trainIndices[i] {
-			xTrain = append(xTrain, inputs[i])
-			yTrain = append(yTrain, y[i])
-		} else {
-			xTest = append(xTest, inputs[i])
-			yTest = append(yTest, y[i])
-		}
-	}
-	return xTrain, xTest, yTrain, yTest
+	return qInputs
 }
 
-func inference(inputs [][]float64, w []float64, b float64) []float64 {
-	var res []float64
-	for _, x := range inputs {
-		res = append(res, p(x, w, b))
+func sigmoid(z float64) float64 {
+	return 1 / (1 + math.Exp(-z))
+}
+
+func dot(a []float64, b []float64) float64 {
+	var res float64
+	if len(a) != len(b) {
+		return 0
+	}
+	for i := 0; i < len(a); i++ {
+		res += a[i] * b[i]
 	}
 	return res
 }
@@ -132,41 +126,47 @@ func p(x []float64, w []float64, b float64) float64 {
 	return sigmoid(dot(w, x) + b)
 }
 
-func sigmoid(z float64) float64 {
-	return 1.0 / (1.0 + math.Exp(-z))
-}
-
-func dot(a []float64, b []float64) (res float64) {
-	for i := 0; i < len(a); i++ {
-		res += a[i] * b[i]
+func inference(inputs [][]float64, w []float64, b float64) []float64 {
+	res := make([]float64, len(inputs))
+	for j, x := range inputs {
+		f := dot(w, x)
+		res[j] = sigmoid(f + b)
 	}
 	return res
 }
 
 func dCost(inputs [][]float64, y, p []float64) (dw []float64, db float64) {
-	m := len(inputs)
-	n := len(inputs[0])
-	dw = make([]float64, n)
-	for i := 0; i < m; i++ {
-		for j := 0; j < n; j++ {
-			dw[j] += (p[i] - y[i]) * inputs[i][j]
+	m := float64(len(inputs))
+	dw = make([]float64, len(inputs[0]))
+	for i := range inputs {
+		for j := range inputs[i] {
+			dw[j] += (p[i] - y[i]) * inputs[i][j] / m
 		}
-		db += p[i] - y[i]
+		db += (p[i] - y[i]) / m
 	}
-	for j := 0; j < n; j++ {
-		dw[j] /= float64(m)
-	}
-	db /= float64(m)
 	return dw, db
 }
 
-func accuracy(inputs [][]float64, y []float64, w []float64, b float64) float64 {
-	p := inference(inputs, w, b)
-	var trueOut float64
-	for i := range p {
-		if int(p[i]+0.5) == int(y[i]+0.5) {
-			trueOut++
+func accuracy(inputs [][]float64, y []float64, w []float64, b float64) (acc float64) {
+	r := inference(inputs, w, b)
+	for i := range inputs {
+		if y[i] == math.Round(r[i]) {
+			acc++
 		}
 	}
-	return trueOut / float64(len(p))
+	return acc / float64(len(y))
+}
+
+func split(inputs [][]float64, y []float64) (xTrain, xTest [][]float64, yTrain, yTest []float64) {
+	size := len(inputs) / 5
+	return inputs[size:], inputs[:size], y[size:], y[:size]
+}
+
+func shuffle(inputs [][]float64, y []float64) (sInputs [][]float64, sY []float64) {
+	ind := rand.Perm(len(inputs))
+	sInputs, sY = make([][]float64, len(inputs)), make([]float64, len(y))
+	for i, j := range ind {
+		sInputs[i], sY[i] = inputs[j], y[j]
+	}
+	return sInputs, sY
 }
