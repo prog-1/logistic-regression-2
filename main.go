@@ -12,26 +12,35 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/palette"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg/draw"
 	"gonum.org/v1/plot/vg/vgimg"
 )
 
 const (
-	epochs                           = 1e4
-	printEveryNthEpochs              = 500
-	learningRateW                    = 1e-3
-	learningRateB                    = 0.5
-	inputPointsMinX, inputPointsMaxX = 0, 3e2
-	funcType                         = 1 // 1 = linear, 2 = quadratic polynomial, 3 = cubic polynomial
-	dataPath                         = "arcs"
+	epochs              = 5e5
+	printEveryNthEpochs = 1e4
+	funcType            = 3 // 1 = linear, 2 = quadratic polynomial, 3 = cubic polynomial
+	dataPath            = "arcs"
 )
 
-func Plot(ps ...plot.Plotter) *image.RGBA {
+type decBoundPlot struct {
+	rows, cols int
+	f          func(c, r int) float64
+}
+
+func (p decBoundPlot) Dims() (c, r int)   { return p.cols, p.rows }
+func (p decBoundPlot) Z(c, r int) float64 { return p.f(c, r) }
+func (p decBoundPlot) X(c int) float64    { return float64(c) }
+func (p decBoundPlot) Y(r int) float64    { return float64(r) }
+
+func Plot(legend string, ps ...plot.Plotter) *image.RGBA {
 	p := plot.New()
 	p.Add(append([]plot.Plotter{
 		plotter.NewGrid(),
 	}, ps...)...)
+	p.Legend.Add(legend)
 	img := image.NewRGBA(image.Rect(0, 0, 640, 480))
 	c := vgimg.NewWith(vgimg.UseImage(img))
 	p.Draw(draw.New(c))
@@ -49,15 +58,19 @@ func dot(a []float64, b []float64) (res float64) {
 	return res
 }
 
+func p(x, w []float64, b float64) float64 {
+	return sigmoid(dot(x, w) + b)
+}
+
 func inference(inputs [][]float64, w []float64, b float64) (res []float64) {
 	for _, x := range inputs {
-		res = append(res, sigmoid(dot(x, w)+b))
+		res = append(res, p(x, w, b))
 	}
 	return res
 }
 
 func dCost(inputs [][]float64, y, p []float64) (dw []float64, db float64) {
-	dw = make([]float64, funcType*2)
+	dw = make([]float64, len(polynomial(0, 0)))
 	m := float64(len(inputs))
 	for i := range inputs {
 		diff := p[i] - y[i]
@@ -78,11 +91,20 @@ func split(inputs [][]float64, y []float64) (xTrain, xTest [][]float64, yTrain, 
 func accuracy(inputs [][]float64, y []float64, w []float64, b float64) float64 {
 	var res float64
 	for i, x := range inputs {
-		if y[i] == math.Round(sigmoid(dot(x, w)+b)) {
+		if y[i] == math.Round(p(x, w, b)) {
 			res++
 		}
 	}
 	return res / float64(len(y)) * 100
+}
+
+func polynomial(x1, x2 float64) (res []float64) {
+	for i := 0; i <= funcType; i++ {
+		for j := 0; j <= funcType-i; j++ {
+			res = append(res, math.Pow(x1, float64(i))*math.Pow(x2, float64(j)))
+		}
+	}
+	return res
 }
 
 func main() {
@@ -121,13 +143,15 @@ func main() {
 			}
 		}
 	}
-	for i := 1; i < funcType; i++ {
-		for j := range inputs {
-			inputs[j] = append(inputs[j], math.Pow(inputs[j][0], funcType))
-			inputs[j] = append(inputs[j], math.Pow(inputs[j][1], funcType))
+	inputPointsMaxX, inputPointsMaxY := inputs[0][0], inputs[0][1]
+	for i := range inputs {
+		if inputs[i][0] > inputPointsMaxX {
+			inputPointsMaxX = inputs[i][0]
+		}
+		if inputs[i][1] > inputPointsMaxX {
+			inputPointsMaxY = inputs[i][1]
 		}
 	}
-	xTrain, xTest, yTrain, yTest := split(inputs, labels)
 
 	ebiten.SetWindowSize(640, 480)
 	ebiten.SetWindowTitle("Logistic Regression")
@@ -147,6 +171,10 @@ func main() {
 	}
 	inputsScatter[0].Color = color.RGBA{255, 0, 0, 255}
 	inputsScatter[1].Color = color.RGBA{0, 255, 0, 255}
+	for i := range inputs {
+		inputs[i] = polynomial(inputs[i][0], inputs[i][1])
+	}
+	xTrain, xTest, yTrain, yTest := split(inputs, labels)
 	img := make(chan *image.RGBA, 1)
 	render := func(x *image.RGBA) {
 		select {
@@ -157,24 +185,38 @@ func main() {
 	}
 
 	go func() {
-		w := make([]float64, funcType*2)
+		learningRateW := []float64{1e-3, 1e-6, 1e-10}
+		learningRateB := []float64{5e-1, 5e-1, 5e-1}
+		w := make([]float64, len(polynomial(0, 0)))
 		var b float64
 		for i := 0; i <= epochs; i++ {
 			y := inference(xTrain, w, b)
 			dw, db := dCost(xTrain, yTrain, y)
 			for i := range dw {
-				w[i] -= dw[i] * learningRateW
+				w[i] -= dw[i] * learningRateW[funcType-1]
 			}
-			b -= db * learningRateB
+			b -= db * learningRateB[funcType-1]
 			if i%printEveryNthEpochs == 0 {
-				xs := []float64{inputPointsMinX, inputPointsMaxX}
-				resLine, _ := plotter.NewLine(plotter.XYs{{X: xs[0], Y: -(w[0]*xs[0] + b) / w[1]}, {X: xs[1], Y: -(w[0]*xs[1] + b) / w[1]}})
-				render(Plot(inputsScatter[0], inputsScatter[1], resLine))
+				boundPlot := decBoundPlot{
+					rows: int(inputPointsMaxY),
+					cols: int(inputPointsMaxX),
+					f: func(c, r int) float64 {
+						x := polynomial(float64(c), float64(r))
+						return p(x, w, b)
+					},
+				}
+				plotters := []plot.Plotter{
+					plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255)),
+				}
+				plotters = append(plotters, inputsScatter[0])
+				plotters = append(plotters, inputsScatter[1])
+				legend := fmt.Sprintf("Accuracy: %.2f", accuracy(inputs, labels, w, b))
+				render(Plot(legend, plotters...))
 				fmt.Printf(`Epoch #%d
-                dw: %.4f, db: %.4f
-                w: %.4f, b: %.4f
-                accuracy: %.2f
-                `, i, dw, db, w, b, accuracy(xTrain, yTrain, w, b))
+				dw: %.4f, db: %.4f
+				w: %.4f, b: %.4f
+				accuracy: %.2f
+				`, i, dw, db, w, b, accuracy(xTrain, yTrain, w, b))
 			}
 		}
 		fmt.Printf("Accuracy: %.2f", accuracy(xTest, yTest, w, b))
