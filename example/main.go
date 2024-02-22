@@ -26,7 +26,7 @@ const (
 	// inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/two_circles.csv"
 
 	epochs        = 1e+6
-	learningRateW = 1e-3
+	learningRateW = 1e-10
 	learningRateB = 1e-1
 )
 
@@ -145,14 +145,26 @@ func cubicInput(linearInput [][]float64) (cubicInput [][]float64, w []float64) {
 		if len(x) != 2 {
 			panic("Inner slices must have length 2 in linear input")
 		}
-		cubicInput[i] = []float64{x[0], x[1], x[0] * x[0], x[1] * x[1], x[0] * x[0] * x[0], x[1] * x[1] * x[1]}
+		cubicInput[i] = polynomial(x[0], x[1], 3)
 	}
-	return cubicInput, make([]float64, 6)
+	return cubicInput, make([]float64, len(cubicInput[0]))
 }
 
 func cubicDecisionBoundaryInput(c, r int) []float64 {
 	a, b := float64(c), float64(r)
-	return []float64{a, b, a * a, b * b, a * a * a, b * b * b}
+	return polynomial(a, b, 3)
+}
+
+func polynomial(x1, x2 float64, n int) (res []float64) {
+	// for i := 0; i <= n; i++ {
+	// 	for j := 0; j <= n; j++ {
+	// 		if i+j <= n && i+j != 0 {
+	// 			res = append(res, math.Pow(x1, float64(i))*math.Pow(x2, float64(j)))
+	// 		}
+	// 	}
+	// }
+	// return res
+	return []float64{math.Pow(x1, 3), math.Pow(x1, 2), x1, math.Pow(x2, 3), math.Pow(x2, 2), x2, x1 * x1 * x2, x1 * x2 * x2, x1 * x2}
 }
 
 func split(inputs [][]float64, y []float64) (xTrain, xTest [][]float64, yTrain, yTest []float64) {
