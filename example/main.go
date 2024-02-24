@@ -26,6 +26,10 @@ const (
 	learningRateB = 1e-1
 )
 
+var (
+	rnd = rand.New(rand.NewSource(10))
+)
+
 func main() {
 	const screenWidth, screenHeight = 640, 480
 	ebiten.SetWindowSize(screenWidth, screenWidth)
@@ -163,7 +167,7 @@ func split(inputs [][]float64, y []float64) (xTrain, xTest [][]float64, yTrain, 
 }
 
 func shuffle(inputs [][]float64, y []float64) (sInputs [][]float64, sY []float64) {
-	ind := rand.Perm(len(inputs))
+	ind := rnd.Perm(len(inputs))
 	sInputs, sY = make([][]float64, len(inputs)), make([]float64, len(y))
 	for i, j := range ind {
 		sInputs[i], sY[i] = inputs[j], y[j]
