@@ -68,16 +68,19 @@ func main() {
 		pointPlt.addTrain(xTrain[i][0], xTrain[i][1], yTrain[i])
 	}
 
-	var b float64
+	var b, db float64
+	var dw []float64
 	for i := 0; i < epochs; i++ {
 		p := inference(xTrain, w, b)
-		dw, db := dCost(xTrain, yTrain, p)
+		dw, db = dCost(xTrain, yTrain, p)
 		for i := range w {
 			w[i] -= dw[i] * learningRateW
 		}
 		b -= db * learningRateB
 	}
-	fmt.Println("Weight:", w, "Bias:", b)
+
+	fmt.Printf("Weights:\n Weights: %v\n Bias: %v\n", w, b)
+	fmt.Printf("\nGradient:\n Weights: %v\n Bias: %v\n\n", dw, db)
 	score := accuracy(xTest, yTest, w, b)
 	fmt.Println("Accuracy:", score)
 
