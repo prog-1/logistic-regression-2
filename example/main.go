@@ -19,12 +19,12 @@ type InputReader interface {
 }
 
 const (
-	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/arcs.csv"
+	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/two_circles.csv"
 
 	epochs        = 1e+6
-	learningRateW = 1e-10
-	learningRateB = 1e-1
-	power         = 3 // Power of the polynomial used in regression
+	learningRateW = 1e-4
+	learningRateB = 0.2
+	power         = 2 // Power of the polynomial used in regression
 )
 
 var (
@@ -77,6 +77,9 @@ func main() {
 			w[i] -= dw[i] * learningRateW
 		}
 		b -= db * learningRateB
+		if i%1000 == 0 {
+			fmt.Printf("\nGradient:\n Weights: %v\n Bias: %v\n\n", dw, db)
+		}
 	}
 
 	fmt.Printf("Weights:\n Weights: %v\n Bias: %v\n", w, b)
