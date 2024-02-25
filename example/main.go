@@ -156,6 +156,7 @@ func cubicDecisionBoundaryInput(c, r int) []float64 {
 }
 
 func polynomial(x1, x2 float64, n int) (res []float64) {
+	return []float64{x1, x2, math.Pow(x1, 3), math.Pow(x1, 2), math.Pow(x2, 3), math.Pow(x2, 2), x1 * x1 * x2, x1 * x2 * x2, x1 * x2}
 	// for i := 0; i <= n; i++ {
 	// 	for j := 0; j <= n; j++ {
 	// 		if i+j <= n && i+j != 0 {
@@ -164,7 +165,6 @@ func polynomial(x1, x2 float64, n int) (res []float64) {
 	// 	}
 	// }
 	// return res
-	return []float64{math.Pow(x1, 3), math.Pow(x1, 2), x1, math.Pow(x2, 3), math.Pow(x2, 2), x2, x1 * x1 * x2, x1 * x2 * x2, x1 * x2}
 }
 
 func split(inputs [][]float64, y []float64) (xTrain, xTest [][]float64, yTrain, yTest []float64) {
