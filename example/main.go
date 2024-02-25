@@ -32,7 +32,7 @@ var (
 
 func main() {
 	const screenWidth, screenHeight = 640, 480
-	ebiten.SetWindowSize(screenWidth, screenWidth)
+	ebiten.SetWindowSize(screenWidth, screenHeight)
 
 	var (
 		inputs [][]float64
