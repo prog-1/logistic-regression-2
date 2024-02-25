@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 
@@ -32,11 +33,15 @@ func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTra
 
 	p := plot.New() //initializing plot
 
+	//#################### Legend ##############################
+
+	p.Legend.Add(fmt.Sprint("Accuracy: ", accuracy(xTest, yTest, w, b)))
+
 	//#################### Points ##############################
 
 	//Colors | true: y=1, false: y=0
-	trueTrainColor := color.RGBA{0, 0, 0, 255}   //Black
-	falseTrainColor := color.RGBA{0, 0, 0, 255}  //Black
+	trueTrainColor := color.RGBA{0, 50, 0, 255}  //Dark green
+	falseTrainColor := color.RGBA{50, 0, 0, 255} //Dark red
 	trueTestColor := color.RGBA{0, 100, 0, 255}  //Green
 	falseTestColor := color.RGBA{100, 0, 0, 255} //Red
 

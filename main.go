@@ -10,13 +10,13 @@ func main() {
 
 	//####################### Data #########################
 
-	//filename := "data/exams1.csv"
 	filename := "data/arcs.csv"
+	//filename := "data/blobs.csv"
+	//filename := "data/circle.csv"
+	//filename := "data/exams.csv"
+	//filename := "data/two_circles.csv"
 
 	x, y, lineMinX, lineMaxX := readData(filename) //gettings data sets
-
-	//fmt.Println("lineMinX:", lineMinX)
-	//fmt.Println("lineMaxX:", lineMaxX)
 
 	xTrain, xTest, yTrain, yTest := split(x, y) //splitting data sets
 
