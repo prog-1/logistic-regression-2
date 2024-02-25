@@ -37,16 +37,6 @@ func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTra
 
 	p.Legend.Add(fmt.Sprint("Accuracy: ", accuracy(xTest, yTest, w, b)))
 
-	//#################### Testing Points ##############################
-
-	/*
-
-		xTest
-		yTest
-		inference
-
-	*/
-
 	//#################### Train points ##############################
 
 	//Colors
@@ -108,7 +98,7 @@ func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTra
 	fpScatter.GlyphStyle.Shape = draw.PlusGlyph{} //plus form
 	p.Add(fpScatter)
 
-	//####################### Line ##############################
+	//####################### Function ##############################
 
 	/*
 		(x1 = X | x2 = Y)
@@ -120,14 +110,24 @@ func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTra
 		x2 = (-w1x1-b) / w2
 	*/
 
-	linePlotter := plotter.XYs{
-		{X: lineMinX, Y: (-w[0]*lineMinX - b) / w[1]},
-		{X: lineMaxX, Y: (-w[0]*lineMaxX - b) / w[1]},
-	}
+	// linePlotter := plotter.XYs{
+	// 	{X: lineMinX, Y: (-w[0]*lineMinX - b) / w[1]},
+	// 	{X: lineMaxX, Y: (-w[0]*lineMaxX - b) / w[1]},
+	// }
 
-	line, _ := plotter.NewLine(linePlotter) //creating line
+	// line, _ := plotter.NewLine(linePlotter) //creating line
 
-	p.Add(line) // adding line to the plot
+	// p.Add(line) // adding line to the plot
+
+	/*
+
+		0 = a*x^2 + b*x + c
+		0 = w1*x1^2 + w2*x2^2 + w3*x1 + w4*x2 + b
+		- w2*x2
+
+		x2 = ???
+
+	*/
 
 	//##################### Ebiten #############################
 

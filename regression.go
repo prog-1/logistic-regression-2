@@ -37,10 +37,10 @@ func (a *App) regression(xTrain, xTest [][]float64, yTrain, yTest []float64, lin
 }
 
 // adjusting coefficients for w1*x1 + w2*x2 + ... + wn*xn + b
-func gradientDescent(w []float64, b float64, input [][]float64, y []float64) ([]float64, float64) {
+func gradientDescent(w []float64, b float64, x [][]float64, y []float64) ([]float64, float64) {
 
-	predictions := inference(input, w, b)  // getting current predictions
-	dw, db := dCost(input, y, predictions) // getting current gradients
+	predictions := inference(x, w, b)  // getting current predictions
+	dw, db := dCost(x, y, predictions) // getting current gradients
 
 	for feature := range w { // for every feature
 		w[feature] -= dw[feature] * lrw // adjusting w coefficient
@@ -55,17 +55,17 @@ func gradientDescent(w []float64, b float64, input [][]float64, y []float64) ([]
 // y []float64 is whether some point is true or not
 // dw - gradients for all the features
 // db - gradient for ... eh..
-func dCost(inputs [][]float64, y []float64, predictions []float64) (dw []float64, db float64) {
+func dCost(x [][]float64, y []float64, predictions []float64) (dw []float64, db float64) {
 	/*
 		Finds dw, db via mse
 		dw[i] = ((1/m)*(p(x[i])-y[i])*x[i])
 		db = ((1/m)*(p(x[i])-y[i])*x[i])
 	*/
 
-	m := float64(len(inputs))
-	dw = make([]float64, len(inputs[0])-1) //initializing lenght of the dw slice
+	m := float64(len(x))
+	dw = make([]float64, len(x[0])-1) //initializing lenght of the dw slice
 
-	for i, point := range inputs { //for each point
+	for i, point := range x { //for each point
 		for feature := 0; feature < len(point)-1; feature++ { //for each feature (except last one - it's y)
 			dw[feature] += (1 / m) * (predictions[i] - y[i]) * point[feature] //calculate feature gradient by formula of mse
 		}
@@ -74,11 +74,13 @@ func dCost(inputs [][]float64, y []float64, predictions []float64) (dw []float64
 	return dw, db
 }
 
+//####################################################################################################################
+
 // a.k.a. prediction (for all points)
-func inference(inputs [][]float64, w []float64, b float64) []float64 {
-	p := make([]float64, len(inputs)) //declaring prediction slice
-	for i := range inputs {           //for every point
-		p[i] = g(dot(w, inputs[i]) + b) //w - weights for each feature | input[i] - concrete point
+func inference(x [][]float64, w []float64, b float64) []float64 {
+	p := make([]float64, len(x)) //declaring prediction slice
+	for i := range x {           //for every point
+		p[i] = g(dot(w, x[i]) + b) //w - weights for each feature | input[i] - concrete point
 	}
 	return p
 }
@@ -94,4 +96,24 @@ func dot(a, b []float64) (res float64) {
 // Sigmoid function
 func g(z float64) float64 {
 	return 1 / (1 + math.Pow(math.E, -1*z))
+}
+
+//####################################################################################################################
+
+// Converts: [][] of x1, x2 into: [][] of x1^2, x2^2, x1, x2
+func quadratic(sx [][]float64) [][]float64 {
+	res := make([][]float64, len(sx))
+	for i, x := range sx {
+		res[i] = []float64{x[0] * x[0], x[1] * x[1], x[0], x[1]}
+	}
+	return res
+}
+
+// Converts: [][] of x1, x2 into: [][] of x1^3, x1^3, x1^2, x2^2, x1, x2
+func cubic(sx [][]float64) [][]float64 {
+	res := make([][]float64, len(sx))
+	for i, x := range sx {
+		res[i] = []float64{x[0] * x[0] * x[0], x[1] * x[1] * x[1], x[0] * x[0], x[1] * x[1], x[0], x[1]}
+	}
+	return res
 }

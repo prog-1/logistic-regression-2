@@ -18,7 +18,10 @@ func main() {
 
 	x, y, lineMinX, lineMaxX := readData(filename) //gettings data sets
 
-	xTrain, xTest, yTrain, yTest := split(x, y) //splitting data sets
+	newX := quadratic(x) //x1, x2 => x1^2, x2^2, x1, x2
+	//newX := cubic(x)     //x1, x2 => x1^3, x2^3, x1^2, x2^2, x1, x2
+
+	xTrain, xTest, yTrain, yTest := split(newX, y) //splitting data sets
 
 	//####################### Ebiten #########################
 
