@@ -118,14 +118,14 @@ func polynomialData(linearInput [][]float64, pow int) (polynomialInput [][]float
 	return polynomialInput, make([]float64, len(polynomialInput[0]))
 }
 
-// TODO: x []float64
 func polynomial(x1, x2 float64, pow int) (res []float64) {
 	res = []float64{x1, x2}
 	for i := 0; i <= pow; i++ {
-		for j := 0; j <= pow; j++ { // TODO: pow-i
-			if (i+j <= pow && i+j != 0) && !(i == 1 && j == 0) && !(i == 0 && j == 1) {
-				res = append(res, math.Pow(x1, float64(i))*math.Pow(x2, float64(j)))
+		for j := 0; j <= pow-i; j++ {
+			if i+j == 0 || (i == 1 && j == 0) || (i == 0 && j == 1) {
+				continue
 			}
+			res = append(res, math.Pow(x1, float64(i))*math.Pow(x2, float64(j)))
 		}
 	}
 	return res
