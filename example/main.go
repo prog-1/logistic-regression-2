@@ -20,14 +20,11 @@ type InputReader interface {
 
 const (
 	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/arcs.csv"
-	// inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/blobs.csv"
-	// inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/circle.csv"
-	// inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/exams.csv"
-	// inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/two_circles.csv"
 
 	epochs        = 1e+6
 	learningRateW = 1e-10
 	learningRateB = 1e-1
+	power         = 3 // Power of the polynomial used in regression
 )
 
 var (
@@ -47,9 +44,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// inputs, w := linearInput(inputs)
-	// inputs, w := quadraticInput(inputs)
-	inputs, w := cubicInput(inputs)
+	inputs, w := polynomialData(inputs, power)
 
 	var maxX, maxY float64
 	for i := range inputs {
@@ -73,7 +68,6 @@ func main() {
 		pointPlt.addTrain(xTrain[i][0], xTrain[i][1], yTrain[i])
 	}
 
-	// w := make([]float64, 2)
 	var b float64
 	for i := 0; i < epochs; i++ {
 		p := inference(xTrain, w, b)
@@ -96,9 +90,7 @@ func main() {
 		rows: int(maxY + 1.5),
 		cols: int(maxX + 1.5),
 		f: func(c, r int) float64 {
-			// return p(linearDecisionBoundaryInput(c, r), w, b)
-			// return p(quadraticDecisionBoundaryInput(c, r), w, b)
-			return p(cubicDecisionBoundaryInput(c, r), w, b)
+			return p(polynomial(float64(c), float64(r), power), w, b)
 		},
 	}
 
@@ -115,47 +107,18 @@ func main() {
 	}
 }
 
-func linearInput(linearInput [][]float64) ([][]float64, []float64) {
-	return linearInput, make([]float64, 2)
-}
-
-func linearDecisionBoundaryInput(c, r int) []float64 {
-	return []float64{float64(c), float64(r)}
-}
-
-func quadraticInput(linearInput [][]float64) (quadraticInput [][]float64, w []float64) {
-	quadraticInput = make([][]float64, len(linearInput))
+func polynomialData(linearInput [][]float64, pow int) (polynomialInput [][]float64, w []float64) {
+	polynomialInput = make([][]float64, len(linearInput))
 	for i, x := range linearInput {
 		if len(x) != 2 {
 			panic("Inner slices must have length 2 in linear input")
 		}
-		quadraticInput[i] = []float64{x[0], x[1], x[0] * x[0], x[1] * x[1]}
+		polynomialInput[i] = polynomial(x[0], x[1], pow)
 	}
-	return quadraticInput, make([]float64, 4)
+	return polynomialInput, make([]float64, len(polynomialInput[0]))
 }
 
-func quadraticDecisionBoundaryInput(c, r int) []float64 {
-	a, b := float64(c), float64(r)
-	return []float64{a, b, a * a, b * b}
-}
-
-func cubicInput(linearInput [][]float64) (cubicInput [][]float64, w []float64) {
-	cubicInput = make([][]float64, len(linearInput))
-	for i, x := range linearInput {
-		if len(x) != 2 {
-			panic("Inner slices must have length 2 in linear input")
-		}
-		cubicInput[i] = polynomial(x[0], x[1], 3)
-	}
-	return cubicInput, make([]float64, len(cubicInput[0]))
-}
-
-func cubicDecisionBoundaryInput(c, r int) []float64 {
-	a, b := float64(c), float64(r)
-	return polynomial(a, b, 3)
-}
-
-func polynomial(x1, x2 float64, n int) (res []float64) {
+func polynomial(x1, x2 float64, pow int) (res []float64) {
 	return []float64{x1, x2, math.Pow(x1, 3), math.Pow(x1, 2), math.Pow(x2, 3), math.Pow(x2, 2), x1 * x1 * x2, x1 * x2 * x2, x1 * x2}
 	// for i := 0; i <= n; i++ {
 	// 	for j := 0; j <= n; j++ {
