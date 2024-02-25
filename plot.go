@@ -37,60 +37,76 @@ func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTra
 
 	p.Legend.Add(fmt.Sprint("Accuracy: ", accuracy(xTest, yTest, w, b)))
 
-	//#################### Points ##############################
+	//#################### Testing Points ##############################
 
-	//Colors | true: y=1, false: y=0
-	trueTrainColor := color.RGBA{0, 50, 0, 255}  //Dark green
-	falseTrainColor := color.RGBA{50, 0, 0, 255} //Dark red
-	trueTestColor := color.RGBA{0, 100, 0, 255}  //Green
-	falseTestColor := color.RGBA{100, 0, 0, 255} //Red
+	/*
+
+		xTest
+		yTest
+		inference
+
+	*/
+
+	//#################### Train points ##############################
+
+	//Colors
+	trainColor := color.RGBA{0, 0, 0, 255} //Black
 
 	//Plotters
-	var trueTrainPlotter plotter.XYs
-	var falseTrainPlotter plotter.XYs
+	var trainPlotter plotter.XYs
 
-	var trueTestPlotter plotter.XYs
-	var falseTestPlotter plotter.XYs
-
-	//Distributing the points to separate Train plotters
+	//Saving all Train points to one plotter
 	for i := 0; i < len(xTrain); i++ { //for every point
-		if yTrain[i] == 0 { //if the current point is false/0/negative
-			trueTrainPlotter = append(trueTrainPlotter, plotter.XY{X: xTrain[i][0], Y: xTrain[i][1]}) //Saving the point in false plotter
-		} else { //if the current point is true/1/positive
-			falseTrainPlotter = append(falseTrainPlotter, plotter.XY{X: xTrain[i][0], Y: xTrain[i][1]}) //Saving the point in true plotter
-		}
+		trainPlotter = append(trainPlotter, plotter.XY{X: xTrain[i][0], Y: xTrain[i][1]}) //save the point in training plotter
 	}
 
-	//Distributing the points to separate Test plotters
-	for i := 0; i < len(xTest); i++ { //for every point
-		if yTest[i] == 0 { //if the current point is false/0/negative
-			trueTestPlotter = append(trueTestPlotter, plotter.XY{X: xTest[i][0], Y: xTest[i][1]}) //Saving the point in false plotter
-		} else { //if the current point is true/1/positive
-			falseTestPlotter = append(falseTestPlotter, plotter.XY{X: xTest[i][0], Y: xTest[i][1]}) //Saving the point in true plotter
-		}
-	}
-
-	//True Train scatter
-	trueTrainScatter, _ := plotter.NewScatter(trueTrainPlotter) //creating new scatter from point data
-	trueTrainScatter.Color = trueTrainColor
+	//Train scatter
+	trueTrainScatter, _ := plotter.NewScatter(trainPlotter) //creating new scatter from point data
+	trueTrainScatter.Color = trainColor
 	p.Add(trueTrainScatter)
 
-	//False Train scatter
-	falseTrainScatter, _ := plotter.NewScatter(falseTrainPlotter)
-	falseTrainScatter.Color = falseTrainColor
-	p.Add(falseTrainScatter)
+	//#################### Test points ##############################
 
-	//True Test scatter
-	trueTestScatter, _ := plotter.NewScatter(trueTestPlotter)
-	trueTestScatter.Color = trueTestColor
-	trueTestScatter.GlyphStyle.Shape = draw.PlusGlyph{} //plus form
-	p.Add(trueTestScatter)
+	//tp - true prediction | fp - false prediction
 
-	//False Test scatter
-	falseTestScatter, _ := plotter.NewScatter(falseTestPlotter)
-	falseTestScatter.Color = falseTestColor
-	falseTestScatter.GlyphStyle.Shape = draw.PlusGlyph{} //plus form
-	p.Add(falseTestScatter)
+	//Colors
+	tpColor := color.RGBA{0, 50, 0, 255}  //Dark green
+	fpColor := color.RGBA{255, 0, 0, 255} //Red
+
+	//Plotters
+	var tpPlotter plotter.XYs
+	var fpPlotter plotter.XYs
+
+	predictions := inference(xTest, w, b) // getting predictions of Test points
+
+	//Distributing Test points depending on whether prediction was correct or not
+	for i, p := range predictions { //for every point
+		if p >= 0.5 { //prediction is 1
+			if yTest[i] == 1 { // truth is 1
+				tpPlotter = append(tpPlotter, plotter.XY{X: xTest[i][0], Y: xTest[i][1]}) //prediction is correct
+			} else { // truth is 0
+				fpPlotter = append(fpPlotter, plotter.XY{X: xTest[i][0], Y: xTest[i][1]}) //prediction is incorrect
+			}
+		} else { //prediction is 0
+			if yTest[i] == 1 { // truth is 1
+				fpPlotter = append(fpPlotter, plotter.XY{X: xTest[i][0], Y: xTest[i][1]}) //prediction is incorrect
+			} else { // truth is 0
+				tpPlotter = append(tpPlotter, plotter.XY{X: xTest[i][0], Y: xTest[i][1]}) //prediction is correct
+			}
+		}
+	}
+
+	//True prediction scatter
+	tpScatter, _ := plotter.NewScatter(tpPlotter) //creating new scatter from point data
+	tpScatter.Color = tpColor
+	tpScatter.GlyphStyle.Shape = draw.PlusGlyph{} //plus form
+	p.Add(tpScatter)
+
+	//False prediction scatter
+	fpScatter, _ := plotter.NewScatter(fpPlotter) //creating new scatter from point data
+	fpScatter.Color = fpColor
+	fpScatter.GlyphStyle.Shape = draw.PlusGlyph{} //plus form
+	p.Add(fpScatter)
 
 	//####################### Line ##############################
 
