@@ -12,7 +12,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"gonum.org/v1/plot"
-	"gonum.org/v1/plot/palette"
+	"gonum.org/v1/plot/palette/moreland"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg/draw"
 	"gonum.org/v1/plot/vg/vgimg"
@@ -21,8 +21,9 @@ import (
 const (
 	epochs              = 5e5
 	printEveryNthEpochs = 1e4
-	funcType            = 3 // 1 = linear, 2 = quadratic polynomial, 3 = cubic polynomial
-	dataPath            = "arcs"
+	funcType            = 1 // 1 = linear, 2 = quadratic polynomial, 3 = cubic polynomial
+	dataPath            = "blobs"
+	scale               = 10
 )
 
 type decBoundPlot struct {
@@ -30,10 +31,10 @@ type decBoundPlot struct {
 	f          func(c, r int) float64
 }
 
-func (p decBoundPlot) Dims() (c, r int)   { return p.cols, p.rows }
-func (p decBoundPlot) Z(c, r int) float64 { return p.f(c, r) }
-func (p decBoundPlot) X(c int) float64    { return float64(c) }
-func (p decBoundPlot) Y(r int) float64    { return float64(r) }
+func (p decBoundPlot) Dims() (c, r int)   { return p.cols * scale, p.rows * scale }
+func (p decBoundPlot) Z(c, r int) float64 { return p.f(int(float64(c)/scale), int(float64(r)/scale)) }
+func (p decBoundPlot) X(c int) float64    { return float64(c) / scale }
+func (p decBoundPlot) Y(r int) float64    { return float64(r) / scale }
 
 func Plot(legend string, ps ...plot.Plotter) *image.RGBA {
 	p := plot.New()
@@ -148,7 +149,7 @@ func main() {
 		if inputs[i][0] > inputPointsMaxX {
 			inputPointsMaxX = inputs[i][0]
 		}
-		if inputs[i][1] > inputPointsMaxX {
+		if inputs[i][1] > inputPointsMaxY {
 			inputPointsMaxY = inputs[i][1]
 		}
 	}
@@ -201,15 +202,16 @@ func main() {
 			b -= (learningRate / math.Sqrt(squaredGradB+epsilon)) * db
 			if i%printEveryNthEpochs == 0 {
 				boundPlot := decBoundPlot{
-					rows: int(inputPointsMaxY),
-					cols: int(inputPointsMaxX),
+					rows: int(inputPointsMaxY + 1.5),
+					cols: int(inputPointsMaxX + 1.5),
 					f: func(c, r int) float64 {
 						x := polynomial(float64(c), float64(r))
 						return p(x, w, b)
 					},
 				}
 				plotters := []plot.Plotter{
-					plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255)),
+					//plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255)),
+					plotter.NewHeatMap(boundPlot, moreland.SmoothGreenRed().Palette(255)),
 				}
 				plotters = append(plotters, inputsScatter[0])
 				plotters = append(plotters, inputsScatter[1])
