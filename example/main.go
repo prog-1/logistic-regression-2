@@ -19,9 +19,9 @@ type InputReader interface {
 }
 
 const (
-	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/two_circles.csv"
+	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/blobs.csv"
 
-	epochs        = 1e+6
+	epochs        = 1e+5
 	learningRateW = 1e-4
 	learningRateB = 0.2
 	power         = 2 // Power of the polynomial used in regression
@@ -93,15 +93,17 @@ func main() {
 	}
 
 	boundPlot := decBoundPlot{
-		rows: int(maxY + 1.5),
-		cols: int(maxX + 1.5),
-		f: func(c, r int) float64 {
-			return p(polynomial(float64(c), float64(r), power), w, b)
+		scale: 0.1,
+		rows:  int(maxY+1.5) * 10,
+		cols:  int(maxX+1.5) * 10,
+		f: func(x, y float64) float64 {
+			return p(polynomial(x, y, power), w, b)
 		},
 	}
 
 	plotters := []plot.Plotter{
-		plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255)),
+		// plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255)),
+		plotter.NewHeatMap(boundPlot, palette.Rainbow(255, (palette.Yellow+palette.Red)/2, palette.Blue, 1, 1, 1)),
 	}
 	pps := pointPlt.series()
 	for _, p := range pps {

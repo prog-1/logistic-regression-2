@@ -24,14 +24,16 @@ func Plot(w, h int, legend string, ps ...plot.Plotter) *image.RGBA {
 }
 
 type decBoundPlot struct {
+	scale      float64
 	rows, cols int
-	f          func(c, r int) float64
+	f          func(x, y float64) float64
 }
 
 func (p decBoundPlot) Dims() (c, r int)   { return p.cols, p.rows }
-func (p decBoundPlot) Z(c, r int) float64 { return p.f(c, r) }
-func (p decBoundPlot) X(c int) float64    { return float64(c) }
-func (p decBoundPlot) Y(r int) float64    { return float64(r) }
+func (p decBoundPlot) Z(c, r int) float64 { return p.f(p.s(c), p.s(r)) }
+func (p decBoundPlot) X(c int) float64    { return p.s(c) }
+func (p decBoundPlot) Y(r int) float64    { return p.s(r) }
+func (p decBoundPlot) s(x int) float64    { return float64(x) * p.scale }
 
 type dataPlot struct {
 	trainPos, trainNeg, testTruePos, testTrueNeg, testFalsePos, testFalseNeg plotter.XYs
