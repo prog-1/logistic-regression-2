@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/palette/moreland"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
 )
@@ -21,7 +22,6 @@ func sigmoid(z float64) float64 {
 func dot(a []float64, b []float64) (dot float64) {
 	if len(a) != len(b) {
 		fmt.Println(a, b)
-		fmt.Println(len(a), len(b))
 		panic("len(a) != len(b)")
 	}
 	for i := 0; i < len(a); i++ {
@@ -29,7 +29,6 @@ func dot(a []float64, b []float64) (dot float64) {
 	}
 	return dot
 }
-
 func inference(inputs [][]float64, w []float64, b float64) (res []float64) {
 	res = make([]float64, len(inputs))
 	for i := 0; i < len(inputs); i++ {
@@ -37,18 +36,23 @@ func inference(inputs [][]float64, w []float64, b float64) (res []float64) {
 	}
 	return res
 }
-func quadraticInference(inputs [][]float64, w []float64) (xs [][]float64, ws []float64) {
-	xs, ws = inputs, w
-	a, b, c := len(inputs), len(inputs[0]), len(w)
+func quadraticInputX(inputs [][]float64) (xs [][]float64) {
+	xs = inputs
+	a, b := len(inputs), len(inputs[0])
 	for i := 0; i < a; i++ {
 		for j := 0; j < b; j++ {
 			xs[i] = append(xs[i], xs[i][j]*xs[i][j])
 		}
 	}
+	return xs
+}
+func quadraticInputW(w []float64) (ws []float64) {
+	ws = w
+	c := len(w)
 	for i := 0; i < c; i++ {
 		ws = append(ws, ws[i]*ws[i])
 	}
-	return xs, ws
+	return ws
 }
 func dCost(inputs [][]float64, y, p []float64) (dw []float64, db float64) {
 	dw = make([]float64, len(inputs[0]))
@@ -61,7 +65,6 @@ func dCost(inputs [][]float64, y, p []float64) (dw []float64, db float64) {
 	}
 	return dw, db
 }
-
 func gradientDescent(inputs [][]float64, y, w []float64, alpha, b float64, epochs int) ([]float64, float64, []float64, float64) {
 	var dw []float64
 	var db float64
@@ -72,13 +75,11 @@ func gradientDescent(inputs [][]float64, y, w []float64, alpha, b float64, epoch
 			w[j] -= alpha * dw[j]
 		}
 		b -= alpha * db
-		//fmt.Println(dw, db)
-		//fmt.Println(w, b)
 	}
 	return w, b, dw, db
 }
-
 func accuracy(inputs [][]float64, y []float64, w []float64, b float64) float64 {
+	//fmt.Println(inputs, y, w, b)
 	prediction := inference(inputs, w, b)
 	var truePos, trueNeg, falsePos, falseNeg float64
 	for i := 0; i < len(y); i++ {
@@ -98,21 +99,14 @@ func accuracy(inputs [][]float64, y []float64, w []float64, b float64) float64 {
 	}
 	return (truePos + trueNeg) / (truePos + trueNeg + falsePos + falseNeg)
 }
-
 func split(data [][]string) (xTrain, xTest, kapusta [][]float64, yTrain, yTest []float64) {
-	half := len(data) / 2
-	segment := len(data[0])
-	xTrain = make([][]float64, half)
+	half, segment := len(data)/2, len(data[0])
+	xTrain, xTest = make([][]float64, half), make([][]float64, half)
 	for i := range xTrain {
 		xTrain[i] = make([]float64, segment-1)
-	}
-	yTrain = make([]float64, half)
-
-	xTest = make([][]float64, half)
-	for i := range xTest {
 		xTest[i] = make([]float64, segment-1)
 	}
-	yTest = make([]float64, half)
+	yTrain, yTest = make([]float64, half), make([]float64, half)
 
 	for i, row := range data[:half] {
 		for j := 0; j < 2; j++ {
@@ -120,7 +114,6 @@ func split(data [][]string) (xTrain, xTest, kapusta [][]float64, yTrain, yTest [
 		}
 		yTrain[i], _ = strconv.ParseFloat(row[2], 64)
 	}
-
 	for i, row := range data[half:] {
 		for j := 0; j < 2; j++ {
 			xTest[i][j], _ = strconv.ParseFloat(row[j], 64)
@@ -130,66 +123,52 @@ func split(data [][]string) (xTrain, xTest, kapusta [][]float64, yTrain, yTest [
 
 	kapusta = make([][]float64, len(data))
 	for i := range data {
-		kapusta[i] = make([]float64, segment)
+		kapusta[i] = make([]float64, segment+1)
 	}
-	// kapusta = data[0] + data[1], y
 	for i := range data {
 		kapusta[i][0], _ = strconv.ParseFloat(data[i][0], 64)
-		a, _ := strconv.ParseFloat(data[i][1], 64)
-		kapusta[i][0] = a
-		kapusta[i][2], _ = strconv.ParseFloat(data[i][2], 64)
+		kapusta[i][1], _ = strconv.ParseFloat(data[i][1], 64)
 	}
-
-	//fmt.Println(xTrain, xTest, yTrain, yTest)
 	return xTrain, xTest, kapusta, yTrain, yTest
 }
-
-func main() {
-	//reading
-	file, err := os.Open("data/exams.csv")
+func drawLine(w []float64, b float64, p *plot.Plot) {
+	line, _ := plotter.NewLine(plotter.XYs{
+		{X: 0, Y: (-w[0]*0 - b) / w[1]},
+		{X: 100, Y: (-w[0]*100 - b) / w[1]}})
+	line.Color = color.RGBA{B: 255, A: 255}
+	p.Add(line)
+}
+func drawQuadraticFunction(p *plot.Plot, f func(x float64) float64) {
+	for i := 0; i < 1000; i++ {
+		line, _ := plotter.NewLine(plotter.XYs{
+			{X: float64(i), Y: f(float64(i))},
+			{X: float64(i + 1), Y: f(float64(i + 1))}})
+		line.Color = color.RGBA{G: 255, A: 255}
+		p.Add(line)
+	}
+}
+func readData(adress string) (data [][]string) {
+	file, err := os.Open(adress)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
 	reader := csv.NewReader(file)
-	data, err := reader.ReadAll()
+	data, err = reader.ReadAll()
 	if err != nil {
 		log.Fatal(err)
 	}
-	// variables
-	p := plot.New()
-	var dw []float64
-	var db float64
-	xTrain, xTest, _, yTrain, yTest := split(data)
-	w := make([]float64, len(xTrain[0]))
-	for i := range w {
-		w[i] = rand.Float64() * 2
-	}
-	b := rand.Float64() * 2
-	alpha := 1e-3
-	epochs := 100000
-	// Output formatting
-	fmt.Printf("Start values of weights and bias: %v, %v \n", w, b)
-
-	xs, ws := quadraticInference(xTrain, w)
-	xtests, _ := quadraticInference(xTest, w)
-
-	w, b, dw, db = gradientDescent(xs, yTrain, ws, alpha, b, epochs)
-	fmt.Printf("End values of weights and bias: %v, %v: \n", w, b)
-	fmt.Printf("End values of dw and db: %v, %v: \n", dw, db)
-	fmt.Printf("Epochs: %v\n", epochs)
-	score := accuracy(xtests, yTest, w, b)
-	fmt.Printf("Score: %v\n", score)
-	// drawing
+	return data
+}
+func drawScatter(xTrain [][]float64, yTrain []float64, p *plot.Plot, scale float64) {
 	var drawR, drawG plotter.XYs
 	for i := 0; i < len(yTrain); i++ {
 		if yTrain[i] == 0 {
-			drawR = append(drawR, struct{ X, Y float64 }{X: xTrain[i][0], Y: xTrain[i][1]})
+			drawR = append(drawR, struct{ X, Y float64 }{X: xTrain[i][0] * scale, Y: xTrain[i][1] * scale})
 		} else {
-			drawG = append(drawG, struct{ X, Y float64 }{X: xTrain[i][0], Y: xTrain[i][1]})
+			drawG = append(drawG, struct{ X, Y float64 }{X: xTrain[i][0] * scale, Y: xTrain[i][1] * scale})
 		}
 	}
-
 	scatterR, err := plotter.NewScatter(drawR)
 	if err != nil {
 		panic(err)
@@ -206,18 +185,99 @@ func main() {
 	scatterG.GlyphStyle.Radius = vg.Points(4)
 	p.Add(scatterG)
 
-	// line, _ := plotter.NewLine(plotter.XYs{
-	// 	{X: 20, Y: (-w[0]*20 - b) / w[1]},
-	// 	{X: 100, Y: (-w[0]*100 - b) / w[1]}})
-	// line.Color = color.RGBA{B: 255, A: 255}
-	// p.Add(line)
-	// draw parabol
-
 	p.Title.Text = "LOGistic regression"
-	p.X.Label.Text = "exam1"
-	p.Y.Label.Text = "exam2"
+	p.X.Label.Text = "x1"
+	p.Y.Label.Text = "x2"
 
 	if err := p.Save(4*vg.Inch, 4*vg.Inch, "scatter.png"); err != nil {
 		panic(err)
 	}
+}
+func main() {
+	//reading
+	adress := "data/exams.csv"
+	data := readData(adress)
+	// variables
+	p := plot.New()
+	var dw []float64
+	var db, scale float64
+	xTrain, xTest, kapusta, yTrain, yTest := split(data)
+	w := make([]float64, len(xTrain[0]))
+	for i := range w {
+		w[i] = rand.Float64() * 2
+	}
+	b := rand.Float64() * 2
+	alpha := 1e-3
+	epochs := 1000000
+	// Output formatting
+	fmt.Printf("Start values of weights and bias: %v, %v: \n", w, b)
+	xTrain = quadraticInputX(xTrain)
+	xTest = quadraticInputX(xTest)
+	w = quadraticInputW(w)
+	w, b, dw, db = gradientDescent(xTrain, yTrain, w, alpha, b, epochs)
+	fmt.Printf("End values of weights and bias: %v, %v: \n", w, b)
+	fmt.Printf("End values of dw and db: %v, %v: \n", dw, db)
+	fmt.Printf("Epochs: %v\n", epochs)
+	score := accuracy(xTest, yTest, w, b)
+	fmt.Printf("Score: %v\n", score)
+	// drawing
+	var plotData plottable
+	plotData.grid = kapusta
+	plotData.N = len(kapusta)
+	plotData.M = len(kapusta)
+	plotData.f = func(c, r int) float64 {
+		return sigmoid(dot([]float64{float64(c), float64(r), float64(c * c), float64(r * r)}, w) + b)
+	}
+	pal := moreland.SmoothBlueRed().Palette(255)
+	heatmap := plotter.NewHeatMap(plotData, pal)
+	p.Add(heatmap)
+	if err := p.Save(4*vg.Inch, 4*vg.Inch, "heatmap.png"); err != nil {
+		panic(err)
+	}
+
+	if adress == "data/exams.csv" {
+		scale = 1
+	} else if adress == "data/circle.csv" {
+		scale = 100
+	}
+	drawScatter(xTrain, yTrain, p, scale)
+	if adress != "data/exams.csv" {
+		drawLine(w, b, p)
+		f1 := func(x float64) float64 {
+			return -w[2]*x*x + w[1]*x + b
+		}
+		drawQuadraticFunction(p, f1)
+	} else {
+		drawLine(w, b, p)
+	}
+
+	p.Title.Text = "LOGistic regression"
+	p.X.Label.Text = "x1"
+	p.Y.Label.Text = "x2"
+
+	if err := p.Save(4*vg.Inch, 4*vg.Inch, "scatter.png"); err != nil {
+		panic(err)
+	}
+	// special thanks to
+	//https://medium.com/@balazs.dianiska/generating-heatmaps-with-go-83988b22c000
+}
+
+type plottable struct {
+	grid [][]float64
+	N    int
+	M    int
+	f    func(c, r int) float64
+}
+
+func (p plottable) Dims() (c, r int) {
+	return p.N, p.M
+}
+func (p plottable) X(c int) float64 {
+	return float64(c)
+}
+func (p plottable) Y(r int) float64 {
+	return float64(r)
+}
+func (p plottable) Z(c, r int) float64 {
+	return p.f(c, r)
 }
