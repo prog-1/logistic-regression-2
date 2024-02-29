@@ -19,15 +19,17 @@ type InputReader interface {
 }
 
 const (
-	inputFileName = "data/exams.csv"
+	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/arcs.csv"
 
-	epochs        = 1e+5
-	learningRateW = 1e-3
-	learningRateB = 1e-1
+	epochs       = 1e+5
+	learningRate = 1e-3
+	power        = 3 // Power of the polynomial used in regression
+	heatmapScale = 0.1
+	epsilon      = 1e-8
 )
 
 var (
-	rnd = rand.New(rand.NewSource(10))
+	rnd = rand.New(rand.NewSource(25))
 )
 
 func main() {
@@ -42,6 +44,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	inputs, w := polynomialData(inputs, power)
+
 	var maxX, maxY float64
 	for i := range inputs {
 		if inputs[i][0] > maxX {
@@ -60,21 +65,31 @@ func main() {
 		falseClr:   color.RGBA{R: 255, A: 255},
 	}
 	xTrain, xTest, yTrain, yTest := split(inputs, y)
+	// xTrain, xTest, yTrain, yTest := inputs, inputs, y, y
+
 	for i := range yTrain {
 		pointPlt.addTrain(xTrain[i][0], xTrain[i][1], yTrain[i])
 	}
 
-	w := make([]float64, 2)
-	var b float64
+	gw := make([]float64, len(inputs[0]))
+	var b, db, gb float64
+	var dw []float64
 	for i := 0; i < epochs; i++ {
 		p := inference(xTrain, w, b)
-		dw, db := dCost(xTrain, yTrain, p)
+		dw, db = dCost(xTrain, yTrain, p)
 		for i := range w {
-			w[i] -= dw[i] * learningRateW
+			gw[i] += dw[i] * dw[i]
+			w[i] -= dw[i] * learningRate / math.Sqrt(gw[i]+epsilon)
 		}
-		b -= db * learningRateB
+		gb += db * db
+		b -= db * learningRate / math.Sqrt(gb+epsilon)
+		if i%1e4 == 0 {
+			fmt.Printf("\nGradient:\n Weights: %v\n Bias: %v\n\n", dw, db)
+		}
 	}
-	fmt.Println("Weight:", w, "Bias:", b)
+
+	fmt.Printf("Weights:\n Weights: %v\n Bias: %v\n", w, b)
+	fmt.Printf("\nGradient:\n Weights: %v\n Bias: %v\n\n", dw, db)
 	score := accuracy(xTest, yTest, w, b)
 	fmt.Println("Accuracy:", score)
 
@@ -84,12 +99,17 @@ func main() {
 	}
 
 	boundPlot := decBoundPlot{
-		rows: int(maxY + 1.5),
-		cols: int(maxX + 1.5),
-		f:    func(c, r int) float64 { return p([]float64{float64(c), float64(r)}, w, b) },
+		scale: heatmapScale,
+		rows:  int((maxY + 1.5) / heatmapScale),
+		cols:  int((maxX + 1.5) / heatmapScale),
+		f: func(x, y float64) float64 {
+			return p(polynomial(x, y, power), w, b)
+		},
 	}
+
 	plotters := []plot.Plotter{
 		plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255)),
+		// plotter.NewHeatMap(boundPlot, palette.Rainbow(255, (palette.Yellow+palette.Red)/2, palette.Blue, 1, 1, 1)),
 	}
 	pps := pointPlt.series()
 	for _, p := range pps {
@@ -99,6 +119,30 @@ func main() {
 	if err := ebiten.RunGame(&App{img: ebiten.NewImageFromImage(Plot(screenWidth, screenHeight, legend, plotters...))}); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func polynomialData(linearInput [][]float64, pow int) (polynomialInput [][]float64, w []float64) {
+	polynomialInput = make([][]float64, len(linearInput))
+	for i, x := range linearInput {
+		if len(x) != 2 {
+			panic("Inner slices must have length 2 in linear input")
+		}
+		polynomialInput[i] = polynomial(x[0], x[1], pow)
+	}
+	return polynomialInput, make([]float64, len(polynomialInput[0]))
+}
+
+func polynomial(x1, x2 float64, pow int) (res []float64) {
+	res = []float64{x1, x2}
+	for i := 0; i <= pow; i++ {
+		for j := 0; j <= pow-i; j++ {
+			if i+j == 0 || (i == 1 && j == 0) || (i == 0 && j == 1) {
+				continue
+			}
+			res = append(res, math.Pow(x1, float64(i))*math.Pow(x2, float64(j)))
+		}
+	}
+	return res
 }
 
 func split(inputs [][]float64, y []float64) (xTrain, xTest [][]float64, yTrain, yTest []float64) {
@@ -139,6 +183,9 @@ func sigmoid(z float64) float64 {
 }
 
 func dot(a []float64, b []float64) (res float64) {
+	if len(a) != len(b) {
+		panic("Length of a and b must be equal")
+	}
 	for i := 0; i < len(a); i++ {
 		res += a[i] * b[i]
 	}
