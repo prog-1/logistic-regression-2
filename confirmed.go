@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"os"
 	"strconv"
 )
@@ -75,6 +76,8 @@ func Accuracy(inputs [][]float64, y []float64, w []float64, b float64) float64 {
 }
 func Split(data [][]string) (xTrain, xTest, kapusta [][]float64, yTrain, yTest []float64) {
 	half, segment := len(data)/2, len(data[0])
+
+	rand.Shuffle(len(data), func(i, j int) { data[i], data[j] = data[j], data[i] })
 	xTrain, xTest = make([][]float64, half), make([][]float64, half)
 	for i := range xTrain {
 		xTrain[i] = make([]float64, segment-1)
@@ -120,10 +123,10 @@ func ReadData(adress string) (data [][]string) {
 }
 
 type Plottable struct {
-	grid [][]float64
-	N    int
-	M    int
-	f    func(c, r int) float64
+	//grid [][]float64
+	N int
+	M int
+	f func(c, r int) float64
 }
 
 func (p Plottable) Dims() (c, r int) {

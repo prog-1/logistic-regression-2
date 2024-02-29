@@ -11,25 +11,25 @@ import (
 	"gonum.org/v1/plot/vg"
 )
 
-func quadraticInputX(inputs [][]float64, w []float64) (xs [][]float64, ws []float64) {
-	xs, ws = inputs, w
-	a, b, c := len(inputs), len(inputs[0]), len(w)
-	for i := 0; i < a; i++ {
-		for j := 0; j < b; j++ {
-			xs[i] = append(xs[i], xs[i][j]*xs[i][j])
-		}
+func quadraticInputX(inputs [][]float64) (xs [][]float64) {
+	for i := range inputs {
+		xs = append(xs, makeThirdPowerRow(inputs[i][0], inputs[i][1]))
 	}
-	for i := 0; i < c; i++ {
-		ws = append(ws, ws[i]*ws[i])
-	}
-	return xs, ws
+	return xs
 }
+func makeQuadraticRow(x1, x2 float64) []float64 {
+	return []float64{x1, x2, x1 * x1, x2 * x2, x1 * x2}
+}
+func makeThirdPowerRow(x1, x2 float64) []float64 {
+	return []float64{x1, x2, x1 * x1, x2 * x2, x1 * x2, x1 * x1 * x1, x2 * x2 * x2, x1 * x1 * x2, x1 * x2 * x2}
+}
+
 func drawLine(w []float64, b float64, p *plot.Plot) {
 	line, _ := plotter.NewLine(plotter.XYs{
 		{X: 0, Y: (-w[0]*0 - b) / w[1]},
 		{X: 100, Y: (-w[0]*100 - b) / w[1]}})
 	line.Color = color.RGBA{B: 255, A: 255}
-	p.Add(line)
+	//p.Add(line)
 }
 func drawPolinomialFunction(p *plot.Plot, f func(x float64) float64) {
 	for i := 0; i < 10; i++ {
@@ -37,16 +37,16 @@ func drawPolinomialFunction(p *plot.Plot, f func(x float64) float64) {
 			{X: float64(i), Y: f(float64(i))},
 			{X: float64(i + 1), Y: f(float64(i + 1))}})
 		line.Color = color.RGBA{B: 255, A: 255}
-		p.Add(line)
+		//p.Add(line)
 	}
 }
-func drawScatter(xTrain [][]float64, yTrain []float64, p *plot.Plot, scale float64) {
+func drawScatter(xTrain [][]float64, yTrain []float64, p *plot.Plot) {
 	var drawR, drawG plotter.XYs
 	for i := 0; i < len(yTrain); i++ {
 		if yTrain[i] == 0 {
-			drawR = append(drawR, struct{ X, Y float64 }{X: xTrain[i][0] * scale, Y: xTrain[i][1] * scale})
+			drawR = append(drawR, struct{ X, Y float64 }{X: xTrain[i][0], Y: xTrain[i][1]})
 		} else {
-			drawG = append(drawG, struct{ X, Y float64 }{X: xTrain[i][0] * scale, Y: xTrain[i][1] * scale})
+			drawG = append(drawG, struct{ X, Y float64 }{X: xTrain[i][0], Y: xTrain[i][1]})
 		}
 	}
 	scatterR, err := plotter.NewScatter(drawR)
@@ -75,14 +75,14 @@ func drawScatter(xTrain [][]float64, yTrain []float64, p *plot.Plot, scale float
 }
 func main() {
 	//reading
-	adress := "data/blobs.csv"
+	adress := "data/circle.csv"
 	data := ReadData(adress)
 	// variables
 	p := plot.New()
 	var dw []float64
-	var db, scale float64
-	xTrain, xTest, kapusta, yTrain, yTest := Split(data)
-	w := make([]float64, len(xTrain[0]))
+	var db float64
+	xTrain, xTest, _, yTrain, yTest := Split(data)
+	w := make([]float64, 9)
 	for i := range w {
 		w[i] = rand.Float64() * 2
 	}
@@ -91,22 +91,24 @@ func main() {
 	epochs := 1000000
 	// Output formatting
 	fmt.Printf("Start values of weights and bias: %v, %v: \n", w, b)
-	xTrain, w = quadraticInputX(xTrain, w)
+	xTrain = quadraticInputX(xTrain)
 	w, b, dw, db = GradientDescent(xTrain, yTrain, w, alpha, b, epochs)
 	fmt.Printf("End values of weights and bias: %v, %v: \n", w, b)
 	fmt.Printf("End values of dw and db: %v, %v: \n", dw, db)
 	fmt.Printf("Epochs: %v\n", epochs)
-	xTest, _ = quadraticInputX(xTest, []float64{0, 0, 0, 0})
+	xTest = quadraticInputX(xTest)
 	score := Accuracy(xTest, yTest, w, b)
 	fmt.Printf("Score: %v\n", score)
 	// drawing
+	maxX1, maxX2 := 60, 60
 	var plotData Plottable
-	plotData.grid = kapusta
-	plotData.N = len(kapusta)
-	plotData.M = len(kapusta)
+	//plotData.grid = kapusta
+	plotData.N = maxX1 + 1
+	plotData.M = maxX2 + 1
+
 	plotData.f = func(c, r int) float64 {
-		return Sigmoid(Dot([]float64{float64(c), float64(r), float64(c * c), float64(r * r)}, w) + b)
-	}
+		return Sigmoid(Dot(makeThirdPowerRow(float64(c), float64(r)), w) + b)
+	} // w1 * r + w2 * c + b + w3 * r^2 + w4 * c^2 + w5 * r * c
 	pal := moreland.SmoothBlueRed().Palette(255)
 	heatmap := plotter.NewHeatMap(plotData, pal)
 	p.Add(heatmap)
@@ -114,14 +116,9 @@ func main() {
 		panic(err)
 	}
 
-	if adress == "data/exams.csv" {
-		scale = 1
-	} else if adress == "data/circle.csv" {
-		scale = 100
-	}
-	drawScatter(xTrain, yTrain, p, scale)
+	drawScatter(xTrain, yTrain, p)
 	if adress != "data/exams.csv" {
-		drawLine(w, b, p)
+		//drawLine(w, b, p)
 		f1 := func(x float64) float64 {
 			return -w[2]*x*x + w[1]*x + b
 		}
