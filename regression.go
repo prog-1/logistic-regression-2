@@ -12,7 +12,7 @@ const (
 )
 
 // Takes all point data, calculates logistic regression, calculates accuracy and sends everything for drawing
-func (a *App) regression(xTrain, xTest [][]float64, yTrain, yTest []float64, maxX0, maxX1 float64, f func([]float64) []float64) {
+func (a *App) regression(xTrain, xTest [][]float64, yTrain, yTest []float64, maxX0, maxX1 float64) {
 
 	w := make([]float64, len(xTrain[0])) //declaring w coefficients
 	var b float64                        //declaring b coefficient
@@ -32,7 +32,7 @@ func (a *App) regression(xTrain, xTest [][]float64, yTrain, yTest []float64, max
 	}
 
 	// ############## Drawing ##############
-	a.updatePlot(w, b, xTrain, xTest, yTrain, yTest, maxX0, maxX1, f) //recreating plot with new values
+	a.updatePlot(w, b, xTrain, xTest, yTrain, yTest, maxX0, maxX1) //recreating plot with new values
 
 }
 

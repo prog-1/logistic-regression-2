@@ -1,24 +1,38 @@
 package main
 
+import "math"
+
 //####################################################################################################################
 
-// Converts: [][] of x0 and x1 into: [][] of x0 and x1 in concrete power
-func convert(x [][]float64, f func([]float64) []float64) [][]float64 {
+// Converts 2D slice of x0 & x1 into 2D slice of the given power
+func convert2Ds(x [][]float64) [][]float64 {
 	res := make([][]float64, len(x))
 	for i, p := range x { //p = point
-		res[i] = f(p)
+		res[i] = convert(p)
 	}
 	return res
 }
 
-//при увеличении степерь необходимо указать все комбинации переменных, чтобы показатель степеней не превышал n
+/*
+	0 : x0
+	1 : x1
+	2 : x0*x0
+	3 : x1*x1
+	4 : x0*x1
+*/
+// Converts slice of x0 & x1 into slice of the given power
+func convert(x []float64) []float64 {
 
-//w1*x0 + w2*x1 + w3*x0^2 + w4*x1^2 + w5*x0*x1 + b
-func quadratic(x []float64) []float64 {
-	return []float64{x[0], x[1], x[0] * x[0], x[1] * x[1], x[0] * x[1]}
-}
+	res := []float64{x[0], x[1]}
 
-//w1*x0 + w2*x1  + w3*x0^2 + w4*x1^2 + w5*x0*x1    + w6*x0^3 + w7*x1^3 + w8*x0^2*x1 + w9*x0*x1^2    + b
-func cubic(x []float64) []float64 {
-	return []float64{x[0], x[1], x[0] * x[0], x[1] * x[1], x[0] * x[1], x[0] * x[0] * x[0], x[1] * x[1] * x[1], x[0] * x[0] * x[1], x[0] * x[1] * x[1]}
+	for i := 0; i <= power; i++ {
+		for j := 0; j <= power-i; j++ {
+			if (i == 0 && j == 0) || (i == 1 && j == 0) || (i == 0 && j == 1) {
+				continue
+			}
+			res = append(res, math.Pow(x[0], float64(i))*math.Pow(x[1], float64(j)))
+		}
+	}
+
+	return res
 }

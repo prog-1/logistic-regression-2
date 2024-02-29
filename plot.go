@@ -29,7 +29,7 @@ func PlotToImage(p *plot.Plot) *ebiten.Image {
 
 //###################################################################################
 
-func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTrain, yTest []float64, maxX0, maxX1 float64, f func([]float64) []float64) {
+func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTrain, yTest []float64, maxX0, maxX1 float64) {
 
 	//################# Initia1zation ##########################
 
@@ -41,7 +41,7 @@ func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTra
 
 	//####################### Heat map ##############################
 
-	p.Add(heatMap(maxX0, maxX1, w, b, f))
+	p.Add(heatMap(maxX0, maxX1, w, b))
 
 	//###################### Points #############################
 
@@ -127,15 +127,16 @@ func (p decBoundPlot) X(c int) float64    { return float64(c) }
 func (p decBoundPlot) Y(r int) float64    { return float64(r) }
 func (p decBoundPlot) Z(c, r int) float64 { return p.f(c, r) } //height of each cell
 
-func heatMap(maxX0, maxX1 float64, w []float64, b float64, f func([]float64) []float64) *plotter.HeatMap {
+func heatMap(maxX0, maxX1 float64, w []float64, b float64) *plotter.HeatMap {
 
 	boundPlot := decBoundPlot{
 		rows: int(math.Ceil(maxX1) + 1),
 		cols: int(math.Ceil(maxX0) + 1),
-		f:    func(c, r int) float64 { return p(f([]float64{float64(c), float64(r)}), w, b) },
+		f:    func(c, r int) float64 { return p(convert([]float64{float64(c), float64(r)}), w, b) },
 	}
-	//return plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255))
+
 	return plotter.NewHeatMap(boundPlot, moreland.SmoothPurpleOrange().Palette(255))
+	//return plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255))
 }
 
 //###############################################################
