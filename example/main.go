@@ -19,13 +19,13 @@ type InputReader interface {
 }
 
 const (
-	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/two_circles.csv"
+	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/arcs.csv"
 
-	epochs        = 1e+5
-	learningRateW = 1e-13
-	learningRateB = 0.1
-	power         = 3 // Power of the polynomial used in regression
-	heatmapScale  = 0.1
+	epochs       = 1e+5
+	learningRate = 1e-3
+	power        = 3 // Power of the polynomial used in regression
+	heatmapScale = 0.1
+	epsilon      = 1e-8
 )
 
 var (
@@ -64,25 +64,27 @@ func main() {
 		trueClr:    color.RGBA{G: 255, A: 255},
 		falseClr:   color.RGBA{R: 255, A: 255},
 	}
-	// xTrain, xTest, yTrain, yTest := split(inputs, y)
-	xTrain, xTest, yTrain, yTest := inputs, inputs, y, y
+	xTrain, xTest, yTrain, yTest := split(inputs, y)
+	// xTrain, xTest, yTrain, yTest := inputs, inputs, y, y
 
 	for i := range yTrain {
 		pointPlt.addTrain(xTrain[i][0], xTrain[i][1], yTrain[i])
 	}
 
-	var b, db float64
+	gw := make([]float64, len(inputs[0]))
+	var b, db, gb float64
 	var dw []float64
 	for i := 0; i < epochs; i++ {
 		p := inference(xTrain, w, b)
 		dw, db = dCost(xTrain, yTrain, p)
 		for i := range w {
-			w[i] -= dw[i] * learningRateW
+			gw[i] += dw[i] * dw[i]
+			w[i] -= dw[i] * learningRate / math.Sqrt(gw[i]+epsilon)
 		}
-		b -= db * learningRateB
+		gb += db * db
+		b -= db * learningRate / math.Sqrt(gb+epsilon)
 		if i%1e4 == 0 {
 			fmt.Printf("\nGradient:\n Weights: %v\n Bias: %v\n\n", dw, db)
-
 		}
 	}
 
@@ -95,9 +97,6 @@ func main() {
 	for i := range prob {
 		pointPlt.addTest(xTest[i][0], xTest[i][1], yTest[i], prob[i])
 	}
-	// TODO: Regenerate split for cubic_Arcs to include red point
-	// TODO: Try 100% training set, 0% test set
-	// TODO: Cubic 2 circles raise polynomial power to 5th
 
 	boundPlot := decBoundPlot{
 		scale: heatmapScale,
