@@ -19,12 +19,13 @@ type InputReader interface {
 }
 
 const (
-	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/blobs.csv"
+	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/two_circles.csv"
 
-	epochs        = 1e+5
-	learningRateW = 1e-4
-	learningRateB = 0.2
-	power         = 2 // Power of the polynomial used in regression
+	epochs        = 1e+6
+	learningRateW = 1e-13
+	learningRateB = 0.1
+	power         = 3 // Power of the polynomial used in regression
+	heatmapScale  = 0.1
 )
 
 var (
@@ -77,8 +78,9 @@ func main() {
 			w[i] -= dw[i] * learningRateW
 		}
 		b -= db * learningRateB
-		if i%1000 == 0 {
+		if i%1e4 == 0 {
 			fmt.Printf("\nGradient:\n Weights: %v\n Bias: %v\n\n", dw, db)
+
 		}
 	}
 
@@ -91,9 +93,12 @@ func main() {
 	for i := range prob {
 		pointPlt.addTest(xTest[i][0], xTest[i][1], yTest[i], prob[i])
 	}
+	// TODO: Regenerate split for cubic_Arcs to include red point
+	// TODO: Try 100% training set, 0% test set
+	// TODO: Cubic 2 circles raise polynomial power to 5th
 
 	boundPlot := decBoundPlot{
-		scale: 0.1,
+		scale: heatmapScale,
 		rows:  int(maxY+1.5) * 10,
 		cols:  int(maxX+1.5) * 10,
 		f: func(x, y float64) float64 {
@@ -102,8 +107,8 @@ func main() {
 	}
 
 	plotters := []plot.Plotter{
-		// plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255)),
-		plotter.NewHeatMap(boundPlot, palette.Rainbow(255, (palette.Yellow+palette.Red)/2, palette.Blue, 1, 1, 1)),
+		plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255)),
+		// plotter.NewHeatMap(boundPlot, palette.Rainbow(255, (palette.Yellow+palette.Red)/2, palette.Blue, 1, 1, 1)),
 	}
 	pps := pointPlt.series()
 	for _, p := range pps {
