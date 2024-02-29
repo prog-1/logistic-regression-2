@@ -21,7 +21,7 @@ type InputReader interface {
 const (
 	inputFileName = "C:/Common/Projects/School/logistic-regression-2/data/two_circles.csv"
 
-	epochs        = 1e+6
+	epochs        = 1e+5
 	learningRateW = 1e-13
 	learningRateB = 0.1
 	power         = 3 // Power of the polynomial used in regression
@@ -64,7 +64,9 @@ func main() {
 		trueClr:    color.RGBA{G: 255, A: 255},
 		falseClr:   color.RGBA{R: 255, A: 255},
 	}
-	xTrain, xTest, yTrain, yTest := split(inputs, y)
+	// xTrain, xTest, yTrain, yTest := split(inputs, y)
+	xTrain, xTest, yTrain, yTest := inputs, inputs, y, y
+
 	for i := range yTrain {
 		pointPlt.addTrain(xTrain[i][0], xTrain[i][1], yTrain[i])
 	}
@@ -99,8 +101,8 @@ func main() {
 
 	boundPlot := decBoundPlot{
 		scale: heatmapScale,
-		rows:  int(maxY+1.5) * 10,
-		cols:  int(maxX+1.5) * 10,
+		rows:  int((maxY + 1.5) / heatmapScale),
+		cols:  int((maxX + 1.5) / heatmapScale),
 		f: func(x, y float64) float64 {
 			return p(polynomial(x, y, power), w, b)
 		},
