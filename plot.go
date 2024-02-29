@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/palette/moreland"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg/draw"
 	"gonum.org/v1/plot/vg/vgimg"
@@ -27,17 +29,23 @@ func PlotToImage(p *plot.Plot) *ebiten.Image {
 
 //###################################################################################
 
-func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTrain, yTest []float64, lineMinX, lineMaxX float64) {
+func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTrain, yTest []float64, maxX0, maxX1 float64, f func([]float64) []float64) {
 
-	//################# Initialization ##########################
+	//################# Initia1zation ##########################
 
-	p := plot.New() //initializing plot
+	p := plot.New() //initia1zing plot
 
-	//#################### Legend ##############################
+	//###################### Legend #############################
 
 	p.Legend.Add(fmt.Sprint("Accuracy: ", accuracy(xTest, yTest, w, b)))
 
-	//#################### Train points ##############################
+	//####################### Heat map ##############################
+
+	p.Add(heatMap(maxX0, maxX1, w, b, f))
+
+	//###################### Points #############################
+
+	//####### Train points #######
 
 	//Colors
 	trainColor := color.RGBA{0, 0, 0, 255} //Black
@@ -55,12 +63,12 @@ func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTra
 	trueTrainScatter.Color = trainColor
 	p.Add(trueTrainScatter)
 
-	//#################### Test points ##############################
+	//####### Test points #######
 
 	//tp - true prediction | fp - false prediction
 
 	//Colors
-	tpColor := color.RGBA{0, 50, 0, 255}  //Dark green
+	tpColor := color.RGBA{0, 255, 0, 255} //Dark green
 	fpColor := color.RGBA{255, 0, 0, 255} //Red
 
 	//Plotters
@@ -71,6 +79,8 @@ func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTra
 
 	//Distributing Test points depending on whether prediction was correct or not
 	for i, p := range predictions { //for every point
+
+		//fmt.Println("xTest[i]:", xTest[i])
 		if p >= 0.5 { //prediction is 1
 			if yTest[i] == 1 { // truth is 1
 				tpPlotter = append(tpPlotter, plotter.XY{X: xTest[i][0], Y: xTest[i][1]}) //prediction is correct
@@ -98,39 +108,34 @@ func (a *App) updatePlot(w []float64, b float64, xTrain, xTest [][]float64, yTra
 	fpScatter.GlyphStyle.Shape = draw.PlusGlyph{} //plus form
 	p.Add(fpScatter)
 
-	//####################### Function ##############################
-
-	/*
-		(x1 = X | x2 = Y)
-
-		0 = k*x + b
-		0 = w1x1 + w2x2 + b
-		-w2x2 = w1x1 + b
-		w2x2 = - b - w1x1
-		x2 = (-w1x1-b) / w2
-	*/
-
-	// linePlotter := plotter.XYs{
-	// 	{X: lineMinX, Y: (-w[0]*lineMinX - b) / w[1]},
-	// 	{X: lineMaxX, Y: (-w[0]*lineMaxX - b) / w[1]},
-	// }
-
-	// line, _ := plotter.NewLine(linePlotter) //creating line
-
-	// p.Add(line) // adding line to the plot
-
-	/*
-
-		0 = a*x^2 + b*x + c
-		0 = w1*x1^2 + w2*x2^2 + w3*x1 + w4*x2 + b
-		- w2*x2
-
-		x2 = ???
-
-	*/
-
 	//##################### Ebiten #############################
 
 	a.plot = p //replacing old plot with new one
 
 }
+
+//############################# HEAT MAP ##################################
+
+// structure for heat map
+type decBoundPlot struct {
+	rows, cols int
+	f          func(c, r int) float64
+}
+
+func (p decBoundPlot) Dims() (c, r int)   { return p.cols, p.rows }
+func (p decBoundPlot) X(c int) float64    { return float64(c) }
+func (p decBoundPlot) Y(r int) float64    { return float64(r) }
+func (p decBoundPlot) Z(c, r int) float64 { return p.f(c, r) } //height of each cell
+
+func heatMap(maxX0, maxX1 float64, w []float64, b float64, f func([]float64) []float64) *plotter.HeatMap {
+
+	boundPlot := decBoundPlot{
+		rows: int(math.Ceil(maxX1) + 1),
+		cols: int(math.Ceil(maxX0) + 1),
+		f:    func(c, r int) float64 { return p(f([]float64{float64(c), float64(r)}), w, b) },
+	}
+	//return plotter.NewContour(boundPlot, []float64{0.5}, palette.Heat(1, 255))
+	return plotter.NewHeatMap(boundPlot, moreland.SmoothPurpleOrange().Palette(255))
+}
+
+//###############################################################

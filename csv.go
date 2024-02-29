@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/csv"
 	"log"
-	"math"
 	"math/rand"
 	"os"
 	"strconv"
@@ -15,7 +14,7 @@ const (
 )
 
 // Reads CSV file and saves data in [][] of inputs and [] of whether point is true or not
-func readData(filename string) (x [][]float64, y []float64, lineMinX, lineMaxX float64) {
+func readData(filename string) (x [][]float64, y []float64, maxX0, maxX1 float64) {
 
 	// ############## Opening CSV file ##############
 
@@ -46,17 +45,15 @@ func readData(filename string) (x [][]float64, y []float64, lineMinX, lineMaxX f
 	x = make([][]float64, len(records))
 	y = make([]float64, len(records))
 
-	lineMinX = math.MaxFloat64 //otherwise will always be 0
-
 	// ############## Saving data ##############
 
 	for i, record := range records { //for each record | i is row
 
 		// ##### Distributing record data along variables #####
 
-		x[i] = make([]float64, len(record)) //making slice instance for every record
+		x[i] = make([]float64, len(record)-1) //making slice instance for every record (all features except last one! Last is Y!)
 
-		for j := 0; j < len(record); j++ { //for every param besides the last one in the row | j is param
+		for j := 0; j < len(record)-1; j++ { //for every param besides the last one in the row | j is param
 
 			x[i][j], err = strconv.ParseFloat(record[j], 64) //saving param in x[][]
 			if err != nil {
@@ -71,17 +68,16 @@ func readData(filename string) (x [][]float64, y []float64, lineMinX, lineMaxX f
 			log.Fatal(err)
 		}
 
-		// updating min & max point x coordinate for decision boundary (line) starting & ending point
-		if x[i][0] < lineMinX {
-			lineMinX = x[i][0]
+		// updating max X0 & X1 coordinates to draw proper grid of height map
+		if x[i][0] > maxX0 { //if current x0 is bigger than saved maximum
+			maxX0 = x[i][0] //save current x0 as new maximum
 		}
-		if x[i][0] > lineMaxX {
-			lineMaxX = x[i][0]
+		if x[i][1] > maxX1 { //if current x1 is bigger than saved maximum
+			maxX1 = x[i][1] //save current x1 as new maximum
 		}
 
 	}
-
-	return x, y, lineMinX, lineMaxX
+	return x, y, maxX0, maxX1
 }
 
 // Splits the x data set into the Training and Test data sets

@@ -12,10 +12,10 @@ const (
 )
 
 // Takes all point data, calculates logistic regression, calculates accuracy and sends everything for drawing
-func (a *App) regression(xTrain, xTest [][]float64, yTrain, yTest []float64, lineMinX, lineMaxX float64) {
+func (a *App) regression(xTrain, xTest [][]float64, yTrain, yTest []float64, maxX0, maxX1 float64, f func([]float64) []float64) {
 
-	w := make([]float64, len(xTrain[0])-1) //declaring w coefficients (-1 cuz last is y)
-	var b float64                          //declaring b coefficient
+	w := make([]float64, len(xTrain[0])) //declaring w coefficients
+	var b float64                        //declaring b coefficient
 
 	for epoch := 1; epoch <= epochs; epoch++ { // for every epoch
 
@@ -23,16 +23,16 @@ func (a *App) regression(xTrain, xTest [][]float64, yTrain, yTest []float64, lin
 
 		// ############## Debug ##############
 
-		if epoch%100 == 0 { //every 100th epoch{
-			fmt.Println("\nEpoch", epoch, "w1:", w[0], "| w2:", w[1], "| b:", b) // coefficient debug
-			fmt.Println("Accuracy:", accuracy(xTest, yTest, w, b))               //Getting accuracy of the trained logistic regression
-		}
+		// if epoch%100 == 0 { //every 100th epoch{
+		// 	fmt.Println("\nEpoch", epoch, "w1:", w[0], "| w2:", w[1], "| b:", b) // coefficient debug
+		// 	fmt.Println("Accuracy:", accuracy(xTest, yTest, w, b))               //Getting accuracy of the trained logistic regression
+		// }
 
-		// ############## Drawing ##############
-
-		a.updatePlot(w, b, xTrain, xTest, yTrain, yTest, lineMinX, lineMaxX) //recreating plot with new values
 		//time.Sleep(time.Millisecond)       //delay to monitor the updates
 	}
+
+	// ############## Drawing ##############
+	a.updatePlot(w, b, xTrain, xTest, yTrain, yTest, maxX0, maxX1, f) //recreating plot with new values
 
 }
 
@@ -63,10 +63,10 @@ func dCost(x [][]float64, y []float64, predictions []float64) (dw []float64, db 
 	*/
 
 	m := float64(len(x))
-	dw = make([]float64, len(x[0])-1) //initializing lenght of the dw slice
+	dw = make([]float64, len(x[0])) //initializing lenght of the dw slice
 
 	for i, point := range x { //for each point
-		for feature := 0; feature < len(point)-1; feature++ { //for each feature (except last one - it's y)
+		for feature := 0; feature < len(point); feature++ { //for each feature
 			dw[feature] += (1 / m) * (predictions[i] - y[i]) * point[feature] //calculate feature gradient by formula of mse
 		}
 		db += (1 / m) * (predictions[i] - y[i]) // calculating bias gradient by mse formula
@@ -76,17 +76,31 @@ func dCost(x [][]float64, y []float64, predictions []float64) (dw []float64, db 
 
 //####################################################################################################################
 
-// a.k.a. prediction (for all points)
+// Prediction for all points
 func inference(x [][]float64, w []float64, b float64) []float64 {
-	p := make([]float64, len(x)) //declaring prediction slice
-	for i := range x {           //for every point
-		p[i] = g(dot(w, x[i]) + b) //w - weights for each feature | input[i] - concrete point
+	res := make([]float64, len(x)) //declaring prediction slice
+	for i := range x {             //for every point
+		res[i] = p(x[i], w, b) //w - weights for each feature | x[i] - concrete point
 	}
-	return p
+	return res
+}
+
+// Prediction for a singular point
+func p(x []float64, w []float64, b float64) float64 {
+	if len(x) > len(w) {
+		fmt.Println("x:", x)
+		fmt.Println("w:", w)
+	}
+	return g(dot(w, x) + b)
 }
 
 // Dot product
 func dot(a, b []float64) (res float64) {
+	if len(a) != len(b) {
+		fmt.Println("a:", a)
+		fmt.Println("b:", b)
+		panic("len(a) != len(b) ;(")
+	}
 	for i := range a { // for each dimention
 		res += a[i] * b[i] // multiply each dimention and sum up
 	}
@@ -96,24 +110,4 @@ func dot(a, b []float64) (res float64) {
 // Sigmoid function
 func g(z float64) float64 {
 	return 1 / (1 + math.Pow(math.E, -1*z))
-}
-
-//####################################################################################################################
-
-// Converts: [][] of x1, x2 into: [][] of x1^2, x2^2, x1, x2
-func quadratic(sx [][]float64) [][]float64 {
-	res := make([][]float64, len(sx))
-	for i, x := range sx {
-		res[i] = []float64{x[0] * x[0], x[1] * x[1], x[0], x[1]}
-	}
-	return res
-}
-
-// Converts: [][] of x1, x2 into: [][] of x1^3, x1^3, x1^2, x2^2, x1, x2
-func cubic(sx [][]float64) [][]float64 {
-	res := make([][]float64, len(sx))
-	for i, x := range sx {
-		res[i] = []float64{x[0] * x[0] * x[0], x[1] * x[1] * x[1], x[0] * x[0], x[1] * x[1], x[0], x[1]}
-	}
-	return res
 }
