@@ -31,7 +31,7 @@ func Inference(inputs [][]float64, w []float64, b float64) (res []float64) {
 	return res
 }
 func DCost(inputs [][]float64, y, p []float64) (dw []float64, db float64) {
-	dw = make([]float64, len(inputs[0]))
+	dw = make([]float64, len(polynomial(0, 0)))
 	m := len(inputs)
 	for i := 0; i < m; i++ {
 		for j := 0; j < len(inputs[0]); j++ {
@@ -41,16 +41,21 @@ func DCost(inputs [][]float64, y, p []float64) (dw []float64, db float64) {
 	}
 	return dw, db
 }
-func GradientDescent(inputs [][]float64, y, w []float64, alpha, b float64, epochs int) ([]float64, float64, []float64, float64) {
+func GradientDescent(inputs [][]float64, y, w, geta []float64, getab, alpha, b float64, epochs int) ([]float64, float64, []float64, float64) {
 	var dw []float64
 	var db float64
 	for i := 0; i < epochs; i++ {
 		p := Inference(inputs, w, b)
 		dw, db = DCost(inputs, y, p)
 		for j := 0; j < len(w); j++ {
-			w[j] -= alpha * dw[j]
+			geta[j] += dw[j] * dw[j]
+			w[j] -= alpha / math.Sqrt(geta[j]+1e-8) * dw[j]
 		}
-		b -= alpha * db
+		getab += db * db
+		b -= alpha / math.Sqrt(getab+1e-8) * db
+		// if i%100000 == 0 {
+		// 	fmt.Printf("Epoch: %v, %v, %v \n", i, dw, db)
+		// }
 	}
 	return w, b, dw, db
 }
